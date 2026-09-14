@@ -94,7 +94,7 @@ $standard = count(array_filter($patients, fn(Patient $p) => $p->getTriageDecisio
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MedTriage | Healthcare Clinic Triage Tracker</title>
+    <title>MedTriage | Healthcare Medical Clinic Triage Tracker</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -104,7 +104,7 @@ $standard = count(array_filter($patients, fn(Patient $p) => $p->getTriageDecisio
         <h1>MedTriage</h1>
         <p>Healthcare Medical Clinic Triage Tracker</p>
     </div>
-    <a class="clear-link" href="?clear=1" onclick="return confirm('Clear ALL patient records? This cannot be undone.');">Clear All Records</a>
+    <a class="clear-link" href="?clear=1" onclick="return confirm('Clear Record\n\nClear all patient record? This cannot be undo.');">Clear Record</a>
 </header>
 
 <main class="container">
