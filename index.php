@@ -125,7 +125,7 @@ $standard = count(array_filter($patients, fn(Patient $p) => $p->getTriageDecisio
                     <label>Age<input type="number" name="age" min="0" max="120" value="<?= htmlspecialchars($_POST['age'] ?? '') ?>" required></label>
                     <label>Patient Type
                         <select name="type" id="patientType" required>
-                            <option value="">Select type</option>
+                            <option value="" selected disabled>Choose patient type...</option>
                             <option value="emergency" <?= (($_POST['type'] ?? '') === 'emergency') ? 'selected' : '' ?>>Emergency</option>
                             <option value="pediatric" <?= (($_POST['type'] ?? '') === 'pediatric') ? 'selected' : '' ?>>Pediatric</option>
                             <option value="senior" <?= (($_POST['type'] ?? '') === 'senior') ? 'selected' : '' ?>>Senior</option>
@@ -142,7 +142,7 @@ $standard = count(array_filter($patients, fn(Patient $p) => $p->getTriageDecisio
                     <label>Guardian Name<input type="text" name="guardian" value="<?= htmlspecialchars($_POST['guardian'] ?? '') ?>" placeholder="Parent or guardian"></label>
                 </div>
                 <div id="seniorFields" class="conditional">
-                    <label>Chronic Condition
+                    <label>Has Chronic Condition?
                         <select name="chronic"><option value="no">No</option><option value="yes" <?= (($_POST['chronic'] ?? '') === 'yes') ? 'selected' : '' ?>>Yes</option></select>
                     </label>
                 </div>
