@@ -9,9 +9,6 @@ if (!isset($_SESSION['patients']) || !is_array($_SESSION['patients'])) {
     $_SESSION['patients'] = [];
 }
 
-// If an older session contains objects from a previous class definition,
-// PHP may restore them as __PHP_Incomplete_Class. Clear those old records
-// instead of allowing a TypeError to break the dashboard.
 foreach ($_SESSION['patients'] as $patient) {
     if (!$patient instanceof Patient) {
         $_SESSION['patients'] = [];
@@ -63,6 +60,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Delete selected patient records by their original queue indexes.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_selected'])) {
+    $selected = $_POST['delete_patient'] ?? [];
+    if (!is_array($selected)) $selected = [$selected];
+
+    $selectedIndexes = array_values(array_unique(array_map('intval', $selected)));
+    foreach ($selectedIndexes as $index) {
+        if (isset($_SESSION['patients'][$index])) {
+            unset($_SESSION['patients'][$index]);
+        }
+    }
+    $_SESSION['patients'] = array_values($_SESSION['patients']);
+
+    header('Location: index.php?deleted=' . count($selectedIndexes));
+    exit;
+}
+
 if (isset($_GET['clear']) && $_GET['clear'] === '1') {
     $_SESSION['patients'] = [];
     header('Location: index.php');
@@ -90,7 +104,7 @@ $standard = count(array_filter($patients, fn(Patient $p) => $p->getTriageDecisio
         <h1>MedTriage</h1>
         <p>Healthcare Medical Clinic Triage Tracker</p>
     </div>
-    <a class="clear-link" href="?clear=1" onclick="return confirm('Clear all temporary patient records?');">Clear Records</a>
+    <a class="clear-link" href="?clear=1" onclick="return confirm('Clear ALL patient records? This cannot be undone.');">Clear All Records</a>
 </header>
 
 <main class="container">
@@ -104,17 +118,10 @@ $standard = count(array_filter($patients, fn(Patient $p) => $p->getTriageDecisio
     </section>
 
     <?php if ($errors): ?>
-        <div class="alert error">
-            <strong>Please correct the following:</strong>
-            <ul>
-                <?php foreach ($errors as $error): ?><li><?= htmlspecialchars($error) ?></li><?php endforeach; ?>
-            </ul>
-        </div>
+        <div class="alert error"><strong>Please correct the following:</strong><ul><?php foreach ($errors as $error): ?><li><?= htmlspecialchars($error) ?></li><?php endforeach; ?></ul></div>
     <?php endif; ?>
-
-    <?php if (isset($_GET['success'])): ?>
-        <div class="alert success">Patient added successfully and placed in the triage queue.</div>
-    <?php endif; ?>
+    <?php if (isset($_GET['success'])): ?><div class="alert success">Patient added successfully and placed in the triage queue.</div><?php endif; ?>
+    <?php if (isset($_GET['deleted'])): ?><div class="alert success"><?= (int)$_GET['deleted'] ?> patient record<?= ((int)$_GET['deleted'] === 1) ? '' : 's' ?> deleted successfully.</div><?php endif; ?>
 
     <section class="stats-grid">
         <div class="stat card"><span>Total Patients</span><strong><?= $total ?></strong></div>
@@ -125,45 +132,29 @@ $standard = count(array_filter($patients, fn(Patient $p) => $p->getTriageDecisio
 
     <div class="content-grid">
         <section class="card form-card">
-            <div class="section-heading">
-                <div><span class="eyebrow">PATIENT INPUT</span><h2>Add Patient</h2></div>
-                <span class="step">01</span>
-            </div>
+            <div class="section-heading"><div><span class="eyebrow">PATIENT INPUT</span><h2>Add Patient</h2></div><span class="step">01</span></div>
             <form method="post" action="">
                 <label>Patient Name<input type="text" name="name" value="<?= htmlspecialchars($_POST['name'] ?? '') ?>" placeholder="e.g. Juan Dela Cruz" required></label>
                 <div class="two-col">
                     <label>Age<input type="number" name="age" min="0" max="120" value="<?= htmlspecialchars($_POST['age'] ?? '') ?>" required></label>
-                    <label>Patient Type
-                        <select name="type" id="patientType" required>
-                            <option value="" selected disabled>Choose patient type...</option>
-                            <option value="emergency" <?= (($_POST['type'] ?? '') === 'emergency') ? 'selected' : '' ?>>Emergency</option>
-                            <option value="pediatric" <?= (($_POST['type'] ?? '') === 'pediatric') ? 'selected' : '' ?>>Pediatric</option>
-                            <option value="senior" <?= (($_POST['type'] ?? '') === 'senior') ? 'selected' : '' ?>>Senior</option>
-                            <option value="general" <?= (($_POST['type'] ?? '') === 'general') ? 'selected' : '' ?>>General</option>
-                        </select>
-                    </label>
+                    <label>Patient Type<select name="type" id="patientType" required>
+                        <option value="" selected disabled>Choose patient type...</option>
+                        <option value="emergency" <?= (($_POST['type'] ?? '') === 'emergency') ? 'selected' : '' ?>>Emergency</option>
+                        <option value="pediatric" <?= (($_POST['type'] ?? '') === 'pediatric') ? 'selected' : '' ?>>Pediatric</option>
+                        <option value="senior" <?= (($_POST['type'] ?? '') === 'senior') ? 'selected' : '' ?>>Senior</option>
+                        <option value="general" <?= (($_POST['type'] ?? '') === 'general') ? 'selected' : '' ?>>General</option>
+                    </select></label>
                 </div>
                 <label>Symptoms<textarea name="symptoms" rows="4" placeholder="Describe the patient's symptoms..." required><?= htmlspecialchars($_POST['symptoms'] ?? '') ?></textarea></label>
-
-                <div id="emergencyFields" class="conditional">
-                    <label>Emergency Type<input type="text" name="emergency_type" value="<?= htmlspecialchars($_POST['emergency_type'] ?? '') ?>" placeholder="e.g. Severe bleeding"></label>
-                </div>
-                <div id="pediatricFields" class="conditional">
-                    <label>Guardian Name<input type="text" name="guardian" value="<?= htmlspecialchars($_POST['guardian'] ?? '') ?>" placeholder="Parent or guardian"></label>
-                </div>
-                <div id="seniorFields" class="conditional">
-                    <label>Has Chronic Condition?
-                        <select name="chronic"><option value="no">No</option><option value="yes" <?= (($_POST['chronic'] ?? '') === 'yes') ? 'selected' : '' ?>>Yes</option></select>
-                    </label>
-                </div>
-
+                <div id="emergencyFields" class="conditional"><label>Emergency Type<input type="text" name="emergency_type" value="<?= htmlspecialchars($_POST['emergency_type'] ?? '') ?>" placeholder="e.g. Severe bleeding"></label></div>
+                <div id="pediatricFields" class="conditional"><label>Guardian Name<input type="text" name="guardian" value="<?= htmlspecialchars($_POST['guardian'] ?? '') ?>" placeholder="Parent or guardian"></label></div>
+                <div id="seniorFields" class="conditional"><label>Has Chronic Condition?<select name="chronic"><option value="no">No</option><option value="yes" <?= (($_POST['chronic'] ?? '') === 'yes') ? 'selected' : '' ?>>Yes</option></select></label></div>
                 <button type="submit">Create Patient Object →</button>
             </form>
         </section>
 
         <aside class="card guide-card">
-            <span class="eyebrow">TRIAGE GUIDE</span>
-            <h2>Priority Rules</h2>
+            <span class="eyebrow">TRIAGE GUIDE</span><h2>Priority Rules</h2>
             <div class="rule"><span class="badge danger">IMMEDIATE</span><p>Emergency patients are assigned the highest priority.</p></div>
             <div class="rule"><span class="badge warning">URGENT</span><p>Children age 5 or below and seniors with chronic conditions are prioritized.</p></div>
             <div class="rule"><span class="badge normal">STANDARD</span><p>General patients and non-urgent cases receive routine triage.</p></div>
@@ -179,23 +170,30 @@ $standard = count(array_filter($patients, fn(Patient $p) => $p->getTriageDecisio
         <?php if (!$patients): ?>
             <div class="empty"><strong>No patients yet.</strong><p>Use the form above to create your first patient object.</p></div>
         <?php else: ?>
-            <div class="table-wrap">
-                <table>
-                    <thead><tr><th>Priority</th><th>Patient</th><th>Type</th><th>Age</th><th>Symptoms</th><th>Polymorphic Summary</th></tr></thead>
-                    <tbody>
-                    <?php foreach ($patients as $patient): ?>
-                        <tr>
-                            <td><span class="badge <?= $patient->getPriorityClass() ?>"><?= htmlspecialchars($patient->getTriageDecision()) ?></span></td>
-                            <td><strong><?= htmlspecialchars($patient->getName()) ?></strong><small><?= htmlspecialchars($patient->getPatientId()) ?></small></td>
-                            <td><?= htmlspecialchars($patient->getCategory()) ?></td>
-                            <td><?= $patient->getAge() ?></td>
-                            <td><?= htmlspecialchars($patient->getSymptoms()) ?></td>
-                            <td><?= htmlspecialchars($patient->getSummary()) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+            <form method="post" action="" id="deleteForm">
+                <div class="queue-actions">
+                    <button type="submit" name="delete_selected" value="1" class="delete-selected" onclick="return confirmDeleteSelected();">Delete Selected</button>
+                    <span class="selection-hint">Select one or more patient records below.</span>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Select</th><th>Priority</th><th>Patient</th><th>Type</th><th>Age</th><th>Symptoms</th><th>Polymorphic Summary</th></tr></thead>
+                        <tbody>
+                        <?php foreach ($patients as $index => $patient): ?>
+                            <tr>
+                                <td><input type="checkbox" name="delete_patient[]" value="<?= $index ?>" class="patient-checkbox" aria-label="Select <?= htmlspecialchars($patient->getName()) ?>"></td>
+                                <td><span class="badge <?= $patient->getPriorityClass() ?>"><?= htmlspecialchars($patient->getTriageDecision()) ?></span></td>
+                                <td><strong><?= htmlspecialchars($patient->getName()) ?></strong><small><?= htmlspecialchars($patient->getPatientId()) ?></small></td>
+                                <td><?= htmlspecialchars($patient->getCategory()) ?></td>
+                                <td><?= $patient->getAge() ?></td>
+                                <td><?= htmlspecialchars($patient->getSymptoms()) ?></td>
+                                <td><?= htmlspecialchars($patient->getSummary()) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </form>
         <?php endif; ?>
     </section>
 </main>
@@ -203,17 +201,14 @@ $standard = count(array_filter($patients, fn(Patient $p) => $p->getTriageDecisio
 <footer>Academic OOP 2 project • Temporary session data only • Not a clinical decision-making tool</footer>
 <script>
 const typeSelect = document.getElementById('patientType');
-const groups = {
-    emergency: document.getElementById('emergencyFields'),
-    pediatric: document.getElementById('pediatricFields'),
-    senior: document.getElementById('seniorFields')
-};
-function updateFields() {
-    Object.values(groups).forEach(group => group.classList.remove('show'));
-    if (groups[typeSelect.value]) groups[typeSelect.value].classList.add('show');
+const groups = { emergency: document.getElementById('emergencyFields'), pediatric: document.getElementById('pediatricFields'), senior: document.getElementById('seniorFields') };
+function updateFields() { Object.values(groups).forEach(group => group.classList.remove('show')); if (groups[typeSelect.value]) groups[typeSelect.value].classList.add('show'); }
+typeSelect.addEventListener('change', updateFields); updateFields();
+function confirmDeleteSelected() {
+    const selected = document.querySelectorAll('.patient-checkbox:checked').length;
+    if (selected === 0) { alert('Please select at least one patient record to delete.'); return false; }
+    return confirm(`Delete ${selected} selected patient record${selected === 1 ? '' : 's'}?`);
 }
-typeSelect.addEventListener('change', updateFields);
-updateFields();
 </script>
 </body>
 </html>
