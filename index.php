@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 else $patient = new SeniorPatient($name, $age, $symptoms, isset($_POST['chronic']) && $_POST['chronic'] === 'yes');
                 break;
             default:
-                $patient = new Patient($name, $age, $symptoms) {
+                $patient = new class($name, $age, $symptoms) extends Patient {
                     public function getCategory(): string { return 'General Patient'; }
                     public function getTriageDecision(): string { return 'STANDARD'; }
                     public function getPriorityScore(): int { return 1; }
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-if (isset($_GET['clear'])) {
+if (isset($_GET['clear']) && $_GET['clear'] === '1') {
     $_SESSION['patients'] = [];
     header('Location: index.php');
     exit;
@@ -61,38 +61,149 @@ if (isset($_GET['clear'])) {
 
 $patients = $_SESSION['patients'];
 $total = count($patients);
-$immediate = count(array_filter($patients, fn($p) => $p->getTriageDecision() === 'IMMEDIATE'));
-$urgent = count(array_filter($patients, fn($p) => $p->getTriageDecision() === 'URGENT'));
-$standard = count(array_filter($patients, fn($p) => $p->getTriageDecision() === 'STANDARD'));
+$immediate = count(array_filter($patients, fn(Patient $p) => $p->getTriageDecision() === 'IMMEDIATE'));
+$urgent = count(array_filter($patients, fn(Patient $p) => $p->getTriageDecision() === 'URGENT'));
+$standard = count(array_filter($patients, fn(Patient $p) => $p->getTriageDecision() === 'STANDARD'));
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MedTriage | Clinic Triage Tracker</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedTriage | Healthcare Clinic Triage Tracker</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="topbar"><div class="brand"><span class="brand-icon">+</span><div><strong>MedTriage</strong><small>Medical Clinic Triage Tracker</small></div></div><nav><a href="#dashboard">Dashboard</a><a href="#register">Register Patient</a><a href="#queue">Triage Queue</a></nav></header>
-<main>
-<section class="hero" id="dashboard"><div><p class="eyebrow">OOP 2 • MIDTERM PROJECT</p><h1>Clinic Triage <span>Tracker</span></h1><p>Prioritize patients using PHP Object-Oriented Programming. No database required — records are kept temporarily during the session.</p><a class="btn" href="#register">+ Register Patient</a></div><div class="hero-card"><div class="pulse">♥</div><h3>Live Triage Status</h3><p>Patients are automatically prioritized based on their subclass behavior.</p></div></section>
-<section class="stats"><div><b><?= $total ?></b><span>Total Patients</span></div><div><b><?= $immediate ?></b><span>Immediate</span></div><div><b><?= $urgent ?></b><span>Urgent</span></div><div><b><?= $standard ?></b><span>Standard</span></div></section>
-<section class="grid" id="register"><div class="panel"><div class="panel-head"><div><p class="eyebrow">PATIENT INPUT</p><h2>Register Patient</h2></div><span class="lock">PHP OOP</span></div>
-<?php if ($errors): ?><div class="alert error"><strong>Please fix:</strong><ul><?php foreach ($errors as $error): ?><li><?= htmlspecialchars($error) ?></li><?php endforeach; ?></ul></div><?php endif; ?>
-<?php if (isset($_GET['success'])): ?><div class="alert success">Patient successfully registered and added to the triage queue.</div><?php endif; ?>
-<form method="post">
-<label>Patient Type<select name="type" id="type" required onchange="toggleFields()"><option value="">Select patient type</option><option value="emergency">Emergency Patient</option><option value="pediatric">Pediatric Patient</option><option value="senior">Senior Patient</option><option value="general">General Patient</option></select></label>
-<div class="two"><label>Full Name<input name="name" required maxlength="80" placeholder="e.g. Juan Dela Cruz"></label><label>Age<input name="age" required type="number" min="0" max="120" placeholder="Age"></label></div>
-<label>Symptoms / Main Concern<textarea name="symptoms" required maxlength="300" placeholder="Describe the patient's main concern..."></textarea></label>
-<div id="emergencyField" class="conditional"><label>Emergency Type<input name="emergency_type" placeholder="e.g. Chest pain, severe bleeding"></label></div>
-<div id="pediatricField" class="conditional"><label>Guardian Name<input name="guardian" placeholder="Parent or guardian"></label></div>
-<div id="seniorField" class="conditional"><label>Chronic Condition?<select name="chronic"><option value="no">No</option><option value="yes">Yes</option></select></label></div>
-<button class="btn full" type="submit">Assess & Add to Queue</button>
-</form></div>
-<div class="panel info"><p class="eyebrow">TRIAGE GUIDE</p><h2>Priority Levels</h2><div class="guide"><div class="dot red"></div><div><b>IMMEDIATE</b><p>Emergency patients receive the highest priority for immediate assessment.</p></div></div><div class="guide"><div class="dot yellow"></div><div><b>URGENT</b><p>Young pediatric patients and seniors with chronic conditions are prioritized.</p></div></div><div class="guide"><div class="dot green"></div><div><b>STANDARD</b><p>Patients requiring routine assessment are placed in the standard queue.</p></div></div><hr><h3>OOP Concepts Demonstrated</h3><ul class="oop"><li><b>Inheritance:</b> Emergency, Pediatric, and Senior inherit Patient.</li><li><b>Polymorphism:</b> the same triage methods behave differently per subclass.</li><li><b>Encapsulation:</b> protected and private properties with public getters.</li><li><b>Constructors:</b> each object is initialized with patient data.</li></ul></div></section>
-<section class="panel queue" id="queue"><div class="panel-head"><div><p class="eyebrow">PROCESSING OUTPUT</p><h2>Triage Queue</h2></div><a class="clear" href="?clear=1" onclick="return confirm('Clear all temporary patient records?')">Clear Queue</a></div>
-<?php if (!$patients): ?><div class="empty">No patients registered yet. Use the form above to create your first patient object.</div><?php else: ?><div class="table-wrap"><table><thead><tr><th>Priority</th><th>Patient</th><th>Type</th><th>Age</th><th>Symptoms</th><th>Object Behavior</th></tr></thead><tbody><?php foreach ($patients as $i => $p): ?><tr><td><span class="badge <?= $p->getPriorityClass() ?>"><?= htmlspecialchars($p->getTriageDecision()) ?></span><small>#<?= $i + 1 ?></small></td><td><b><?= htmlspecialchars($p->getName()) ?></b><small><?= htmlspecialchars($p->getPatientId()) ?></small></td><td><?= htmlspecialchars($p->getCategory()) ?></td><td><?= $p->getAge() ?></td><td><?= htmlspecialchars($p->getSymptoms()) ?></td><td><?= htmlspecialchars($p->getSummary()) ?></td></tr><?php endforeach; ?></tbody></table></div><?php endif; ?></section>
-</main><footer>MedTriage • PHP OOP 2 Midterm Project • No Database</footer>
-<script>function toggleFields(){const t=document.getElementById('type').value;document.querySelectorAll('.conditional').forEach(x=>x.style.display='none');const m={emergency:'emergencyField',pediatric:'pediatricField',senior:'seniorField'};if(m[t])document.getElementById(m[t]).style.display='block';}toggleFields();</script>
-</body></html>
+<header class="topbar">
+    <div>
+        <p class="eyebrow">OOP 2 • PHP OOP MIDTERM PROJECT</p>
+        <h1>MedTriage</h1>
+        <p>Healthcare Medical Clinic Triage Tracker</p>
+    </div>
+    <a class="clear-link" href="?clear=1" onclick="return confirm('Clear all temporary patient records?');">Clear Records</a>
+</header>
+
+<main class="container">
+    <section class="hero card">
+        <div>
+            <span class="pill">NO DATABASE • SESSION STORAGE</span>
+            <h2>Organize patients by triage priority.</h2>
+            <p>Create patient objects from different patient types and let polymorphic methods determine category, priority, and triage decision.</p>
+        </div>
+        <div class="hero-icon">+</div>
+    </section>
+
+    <?php if ($errors): ?>
+        <div class="alert error">
+            <strong>Please correct the following:</strong>
+            <ul>
+                <?php foreach ($errors as $error): ?><li><?= htmlspecialchars($error) ?></li><?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
+
+    <?php if (isset($_GET['success'])): ?>
+        <div class="alert success">Patient added successfully and placed in the triage queue.</div>
+    <?php endif; ?>
+
+    <section class="stats-grid">
+        <div class="stat card"><span>Total Patients</span><strong><?= $total ?></strong></div>
+        <div class="stat card"><span>Immediate</span><strong><?= $immediate ?></strong></div>
+        <div class="stat card"><span>Urgent</span><strong><?= $urgent ?></strong></div>
+        <div class="stat card"><span>Standard</span><strong><?= $standard ?></strong></div>
+    </section>
+
+    <div class="content-grid">
+        <section class="card form-card">
+            <div class="section-heading">
+                <div><span class="eyebrow">PATIENT INPUT</span><h2>Add Patient</h2></div>
+                <span class="step">01</span>
+            </div>
+            <form method="post" action="">
+                <label>Patient Name<input type="text" name="name" value="<?= htmlspecialchars($_POST['name'] ?? '') ?>" placeholder="e.g. Juan Dela Cruz" required></label>
+                <div class="two-col">
+                    <label>Age<input type="number" name="age" min="0" max="120" value="<?= htmlspecialchars($_POST['age'] ?? '') ?>" required></label>
+                    <label>Patient Type
+                        <select name="type" id="patientType" required>
+                            <option value="">Select type</option>
+                            <option value="emergency" <?= (($_POST['type'] ?? '') === 'emergency') ? 'selected' : '' ?>>Emergency</option>
+                            <option value="pediatric" <?= (($_POST['type'] ?? '') === 'pediatric') ? 'selected' : '' ?>>Pediatric</option>
+                            <option value="senior" <?= (($_POST['type'] ?? '') === 'senior') ? 'selected' : '' ?>>Senior</option>
+                            <option value="general" <?= (($_POST['type'] ?? '') === 'general') ? 'selected' : '' ?>>General</option>
+                        </select>
+                    </label>
+                </div>
+                <label>Symptoms<textarea name="symptoms" rows="4" placeholder="Describe the patient's symptoms..." required><?= htmlspecialchars($_POST['symptoms'] ?? '') ?></textarea></label>
+
+                <div id="emergencyFields" class="conditional">
+                    <label>Emergency Type<input type="text" name="emergency_type" value="<?= htmlspecialchars($_POST['emergency_type'] ?? '') ?>" placeholder="e.g. Severe bleeding"></label>
+                </div>
+                <div id="pediatricFields" class="conditional">
+                    <label>Guardian Name<input type="text" name="guardian" value="<?= htmlspecialchars($_POST['guardian'] ?? '') ?>" placeholder="Parent or guardian"></label>
+                </div>
+                <div id="seniorFields" class="conditional">
+                    <label>Chronic Condition
+                        <select name="chronic"><option value="no">No</option><option value="yes" <?= (($_POST['chronic'] ?? '') === 'yes') ? 'selected' : '' ?>>Yes</option></select>
+                    </label>
+                </div>
+
+                <button type="submit">Create Patient Object →</button>
+            </form>
+        </section>
+
+        <aside class="card guide-card">
+            <span class="eyebrow">TRIAGE GUIDE</span>
+            <h2>Priority Rules</h2>
+            <div class="rule"><span class="badge danger">IMMEDIATE</span><p>Emergency patients are assigned the highest priority.</p></div>
+            <div class="rule"><span class="badge warning">URGENT</span><p>Children age 5 or below and seniors with chronic conditions are prioritized.</p></div>
+            <div class="rule"><span class="badge normal">STANDARD</span><p>General patients and non-urgent cases receive routine triage.</p></div>
+            <div class="oop-box"><strong>OOP Demonstration</strong><p>Every queue item is stored as a <code>Patient</code> reference, while overridden methods behave according to the actual child object.</p></div>
+        </aside>
+    </div>
+
+    <section class="card queue-card">
+        <div class="section-heading">
+            <div><span class="eyebrow">LIVE SESSION QUEUE</span><h2>Triage Results</h2></div>
+            <span class="count"><?= $total ?> record<?= $total === 1 ? '' : 's' ?></span>
+        </div>
+        <?php if (!$patients): ?>
+            <div class="empty"><strong>No patients yet.</strong><p>Use the form above to create your first patient object.</p></div>
+        <?php else: ?>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Priority</th><th>Patient</th><th>Type</th><th>Age</th><th>Symptoms</th><th>Polymorphic Summary</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($patients as $patient): ?>
+                        <tr>
+                            <td><span class="badge <?= $patient->getPriorityClass() ?>"><?= htmlspecialchars($patient->getTriageDecision()) ?></span></td>
+                            <td><strong><?= htmlspecialchars($patient->getName()) ?></strong><small><?= htmlspecialchars($patient->getPatientId()) ?></small></td>
+                            <td><?= htmlspecialchars($patient->getCategory()) ?></td>
+                            <td><?= $patient->getAge() ?></td>
+                            <td><?= htmlspecialchars($patient->getSymptoms()) ?></td>
+                            <td><?= htmlspecialchars($patient->getSummary()) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+    </section>
+</main>
+
+<footer>Academic OOP 2 project • Temporary session data only • Not a clinical decision-making tool</footer>
+<script>
+const typeSelect = document.getElementById('patientType');
+const groups = {
+    emergency: document.getElementById('emergencyFields'),
+    pediatric: document.getElementById('pediatricFields'),
+    senior: document.getElementById('seniorFields')
+};
+function updateFields() {
+    Object.values(groups).forEach(group => group.classList.remove('show'));
+    if (groups[typeSelect.value]) groups[typeSelect.value].classList.add('show');
+}
+typeSelect.addEventListener('change', updateFields);
+updateFields();
+</script>
+</body>
+</html>
