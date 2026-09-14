@@ -2,6 +2,7 @@
 // Load all Patient classes before starting the session so PHP can correctly
 // restore Patient objects saved in the session.
 require_once __DIR__ . '/classes/Patient.php';
+require_once __DIR__ . '/classes/GeneralPatient.php';
 session_start();
 
 if (!isset($_SESSION['patients']) || !is_array($_SESSION['patients'])) {
@@ -48,12 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($age < 60) $errors[] = 'Senior patients must be 60 or older.';
                 else $patient = new SeniorPatient($name, $age, $symptoms, isset($_POST['chronic']) && $_POST['chronic'] === 'yes');
                 break;
-            default:
-                $patient = new class($name, $age, $symptoms) extends Patient {
-                    public function getCategory(): string { return 'General Patient'; }
-                    public function getTriageDecision(): string { return 'STANDARD'; }
-                    public function getPriorityScore(): int { return 1; }
-                };
+            case 'general':
+                $patient = new GeneralPatient($name, $age, $symptoms);
+                break;
         }
 
         if (!$errors) {
