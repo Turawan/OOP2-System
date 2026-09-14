@@ -1,9 +1,21 @@
 <?php
-session_start();
+// Load all Patient classes before starting the session so PHP can correctly
+// restore Patient objects saved in the session.
 require_once __DIR__ . '/classes/Patient.php';
+session_start();
 
-if (!isset($_SESSION['patients'])) {
+if (!isset($_SESSION['patients']) || !is_array($_SESSION['patients'])) {
     $_SESSION['patients'] = [];
+}
+
+// If an older session contains objects from a previous class definition,
+// PHP may restore them as __PHP_Incomplete_Class. Clear those old records
+// instead of allowing a TypeError to break the dashboard.
+foreach ($_SESSION['patients'] as $patient) {
+    if (!$patient instanceof Patient) {
+        $_SESSION['patients'] = [];
+        break;
+    }
 }
 
 $errors = [];
