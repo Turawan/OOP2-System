@@ -1,8 +1,8 @@
 <?php
 // Load all Patient classes before starting the session so PHP can correctly
 // restore Patient objects saved in the session.
-require_once __DIR__ . '/classes/Patient.php';
-require_once __DIR__ . '/classes/GeneralPatient.php';
+require_once __DIR__ . '/classes/parent.php';
+require_once __DIR__ . '/classes/child.php';
 session_start();
 
 if (!isset($_SESSION['patients']) || !is_array($_SESSION['patients'])) {

@@ -1,69 +1,6 @@
 <?php
 
-abstract class Patient
-{
-    protected string $name;
-    protected int $age;
-    protected string $symptoms;
-    private string $patientId;
-
-    public function __construct(string $name, int $age, string $symptoms)
-    {
-        $this->patientId = 'PT-' . date('YmdHis') . '-' . random_int(100, 999);
-        $this->name = trim($name);
-        $this->age = $age;
-        $this->symptoms = trim($symptoms);
-    }
-
-    public function getPatientId(): string
-    {
-        return $this->patientId;
-    }
-
-    public function getName(): string
-    {
-        return $this->name;
-    }
-
-    public function getAge(): int
-    {
-        return $this->age;
-    }
-
-    public function getSymptoms(): string
-    {
-        return $this->symptoms;
-    }
-
-    public function getCategory(): string
-    {
-        return 'General Patient';
-    }
-
-    public function getTriageDecision(): string
-    {
-        return 'STANDARD';
-    }
-
-    public function getPriorityScore(): int
-    {
-        return 1;
-    }
-
-    public function getSummary(): string
-    {
-        return $this->name . ' requires routine triage assessment.';
-    }
-
-    public function getPriorityClass(): string
-    {
-        return match ($this->getTriageDecision()) {
-            'IMMEDIATE' => 'danger',
-            'URGENT' => 'warning',
-            default => 'normal',
-        };
-    }
-}
+require_once __DIR__ . '/parent.php';
 
 class EmergencyPatient extends Patient
 {
@@ -156,5 +93,33 @@ class SeniorPatient extends Patient
     {
         $condition = $this->hasChronicCondition ? 'with a chronic condition' : 'without a declared chronic condition';
         return $this->name . ' is a senior patient ' . $condition . '.';
+    }
+}
+
+class GeneralPatient extends Patient
+{
+    public function __construct(string $name, int $age, string $symptoms)
+    {
+        parent::__construct($name, $age, $symptoms);
+    }
+
+    public function getCategory(): string
+    {
+        return 'General Patient';
+    }
+
+    public function getTriageDecision(): string
+    {
+        return 'STANDARD';
+    }
+
+    public function getPriorityScore(): int
+    {
+        return 1;
+    }
+
+    public function getSummary(): string
+    {
+        return $this->name . ' is a general patient receiving standard triage.';
     }
 }
